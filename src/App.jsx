@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import Rankings from './components/Rankings'
+import { submitVotes, generateUserId } from './services/rankingService'
 
 const players = [
   { name: "Miles Demarest", image: "https://dbukjj6eu5tsf.cloudfront.net/sidearm.sites/claremontmuddscrippsc.sidearmsports.com/images/2025/8/21/Demarest8181.jpg" },
@@ -26,13 +28,13 @@ const players = [
   { name: "Clayton Thomas", image: "https://cmsathletics.org/images/2025/8/21/Thomas7811.jpg" },
   { name: "Trusten Lehmann-Karp", image: "https://cmsathletics.org/images/2025/8/21/LehmannKarp8036.jpg" },
   { name: "Gray Mollenkamp", image: "https://cmsathletics.org/images/2025/8/21/Mollenkamp8018.jpg" },
-  { name: "Daniel Zhu", image: "https://cmsathletics.org/images/2025/8/21/Zhu7932.jpg" },
+  { name: "Daniel Zhu", image: "https://dbukjj6eu5tsf.cloudfront.net/sidearm.sites/claremontmuddscrippsc.sidearmsports.com/images/2025/8/21/Zhu8143.jpg" },
   { name: "John Laidlaw", image: "https://cmsathletics.org/images/2025/8/21/Laidlaw8069.jpg" },
   { name: "Leica Yasukawa", image: "https://cmsathletics.org/images/2025/8/21/Yasukawa7987.jpg" },
   { name: "Paxton Greene", image: "https://cmsathletics.org/images/2025/8/21/Greene7972.jpg" },
   { name: "Penn Kaplan", image: "https://cmsathletics.org/images/2025/8/21/Kaplan7844.jpg" },
   { name: "Nico McKee", image: "https://cmsathletics.org/images/2025/8/21/McKee7935.jpg" },
-  { name: "Tomas Bellatin", image: "https://cmsathletics.org/images/2025/8/21/Bellatin7668.jpg" },
+  { name: "Tomas Bellatin", image: "https://dbukjj6eu5tsf.cloudfront.net/sidearm.sites/claremontmuddscrippsc.sidearmsports.com/images/2025/8/21/Bellatin8003.jpg" },
   { name: "Sean Lee", image: "https://cmsathletics.org/images/2025/8/21/Lee7914.jpg" },
   { name: "Matteo Quadrini", image: "https://cmsathletics.org/images/2025/8/21/Quadrini8105.jpg" }
 ]
@@ -42,8 +44,11 @@ function App() {
   const [shuffledPlayers, setShuffledPlayers] = useState([])
   const [results, setResults] = useState({ chopped: [], notChopped: [] })
   const [showResults, setShowResults] = useState(false)
+  const [showRankings, setShowRankings] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [gameStarted, setGameStarted] = useState(false)
+  const [submittingVotes, setSubmittingVotes] = useState(false)
+  const [userId] = useState(() => generateUserId())
 
   useEffect(() => {
     const shuffled = [...players].sort(() => Math.random() - 0.5)
@@ -72,8 +77,33 @@ function App() {
     setCurrentPlayerIndex(0)
     setResults({ chopped: [], notChopped: [] })
     setShowResults(false)
+    setShowRankings(false)
     setGameStarted(false)
     setOnboardingStep(0)
+    setSubmittingVotes(false)
+  }
+
+  const handleSubmitToRankings = async () => {
+    setSubmittingVotes(true)
+    try {
+      const result = await submitVotes(results, userId)
+      if (result.success) {
+        console.log('Votes submitted successfully:', result.sessionId)
+      } else {
+        console.error('Failed to submit votes:', result.error)
+      }
+    } catch (error) {
+      console.error('Error submitting votes:', error)
+    }
+    setSubmittingVotes(false)
+  }
+
+  const showGlobalRankings = () => {
+    setShowRankings(true)
+  }
+
+  const hideRankings = () => {
+    setShowRankings(false)
   }
 
   const nextOnboardingStep = () => {
@@ -88,6 +118,11 @@ function App() {
     setGameStarted(true)
   }
 
+  // Show rankings if requested
+  if (showRankings) {
+    return <Rankings onBack={hideRankings} />
+  }
+
   // Onboarding Flow
   if (!gameStarted) {
     if (onboardingStep === 0) {
@@ -100,9 +135,14 @@ function App() {
             <p className="onboarding-description">
               Swipe through each player and decide: are they chopped or not chopped?
             </p>
-            <button className="onboarding-btn" onClick={nextOnboardingStep}>
-              Let's Go
-            </button>
+            <div className="onboarding-buttons">
+              <button className="onboarding-btn" onClick={nextOnboardingStep}>
+                Let's Go
+              </button>
+              <button className="onboarding-btn secondary" onClick={showGlobalRankings}>
+                🏆 View Rankings
+              </button>
+            </div>
           </div>
         </div>
       )
@@ -169,9 +209,21 @@ function App() {
             </div>
           </div>
         </div>
-        <button className="reset-btn" onClick={resetApp}>
-          Play Again
-        </button>
+        <div className="results-actions">
+          <button 
+            className="submit-btn" 
+            onClick={handleSubmitToRankings}
+            disabled={submittingVotes}
+          >
+            {submittingVotes ? 'Submitting...' : '📊 Submit to Rankings'}
+          </button>
+          <button className="rankings-btn" onClick={showGlobalRankings}>
+            🏆 View Global Rankings
+          </button>
+          <button className="reset-btn" onClick={resetApp}>
+            🔄 Play Again
+          </button>
+        </div>
       </div>
     )
   }
